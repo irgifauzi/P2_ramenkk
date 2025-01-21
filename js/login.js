@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
             showConfirmButton: false,
           });
           setTimeout(() => {
-            window.location.href = 'https://ramenkk.github.io/kasir/';  
+            window.location.href = 'https://irgifauzi.github.io/P2_kasir/';  
           }, 2000);
         } else {
           Swal.fire({
