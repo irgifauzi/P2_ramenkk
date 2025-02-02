@@ -204,6 +204,25 @@ document.getElementById('addDataForm').addEventListener('submit', async function
     const gambar = document.getElementById('gambar').value; // URL gambar
     const kategori = document.getElementById('kategori').value;
 
+    // Ambil token CSRF dari cookie
+    const csrfTokenCookie = document.cookie.split(';').find(cookie => cookie.trim().startsWith('csrf_token='));
+
+    // Periksa jika cookie CSRF ada
+    if (!csrfTokenCookie) {
+        console.error('CSRF token not found in cookies');
+        Swal.fire({
+            icon: 'error',
+            title: 'CSRF token missing',
+            text: 'CSRF token not found in cookies.',
+            timer: 2000,
+            showConfirmButton: false,
+        });
+        return;
+    }
+
+    // Ekstrak token CSRF dari cookie
+    const csrfToken = csrfTokenCookie.split('=')[1];
+
     // Siapkan data untuk dikirim
     const postData = {
         nama_menu,
@@ -218,6 +237,7 @@ document.getElementById('addDataForm').addEventListener('submit', async function
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json', 
+                'X-CSRF-Token': csrfToken,  // Tambahkan CSRF token di header
             },
             body: JSON.stringify(postData), 
         });
@@ -227,34 +247,36 @@ document.getElementById('addDataForm').addEventListener('submit', async function
             console.error('Error:', errorMessage);
             Swal.fire({
                 icon: 'error',
-                title: 'error post menu',
-                text: 'Error to post menu ramen.',
+                title: 'Error posting menu',
+                text: 'Error posting menu ramen.',
                 timer: 2000,
                 showConfirmButton: false,
-              });
+            });
             return;
         }
 
         Swal.fire({
-            icon: 'succesful',
-            title: 'succes post menu',
-            text: 'succes to poat menu ramen.',
+            icon: 'success',
+            title: 'Menu posted successfully',
+            text: 'Successfully posted menu ramen.',
             timer: 2000,
             showConfirmButton: false,
-          });
+        });
 
         document.getElementById('addDataForm').reset();
     } catch (error) {
         console.error('Error submitting data:', error);
         Swal.fire({
             icon: 'error',
-            title: 'error submit post menu',
-            text: 'Error submit menu ramen.',
+            title: 'Error submitting menu',
+            text: 'Error submitting menu ramen.',
             timer: 2000,
             showConfirmButton: false,
-          });
+        });
     }
 });
+
+
 
 
 
