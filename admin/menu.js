@@ -194,87 +194,118 @@ async function deleteMenu(id) {
 
 
 
-document.getElementById('addDataForm').addEventListener('submit', async function(event) {
-    event.preventDefault(); 
+
+
+document.getElementById('addDataForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
 
     // Ambil data dari form
-    const nama_menu = document.getElementById('nama_menu').value;
-    const harga = parseFloat(document.getElementById('harga').value);
-    const deskripsi = document.getElementById('deskripsi').value;
-    const gambar = document.getElementById('gambar').value; // URL gambar
-    const kategori = document.getElementById('kategori').value;
+    const nama_menu = sanitizeInput(document.getElementById('nama_menu').value.trim());
+    const hargaInput = document.getElementById('harga').value.trim();
+    const harga = hargaInput ? parseFloat(hargaInput) : NaN;
+    const deskripsi = sanitizeInput(document.getElementById('deskripsi').value.trim());
+    const gambar = sanitizeInput(document.getElementById('gambar').value.trim());
+    const kategori = sanitizeInput(document.getElementById('kategori').value.trim());
 
-    // Ambil token CSRF dari cookie
-    const csrfTokenCookie = document.cookie.split(';').find(cookie => cookie.trim().startsWith('csrf_token='));
-
-    // Periksa jika cookie CSRF ada
-    if (!csrfTokenCookie) {
-        console.error('CSRF token not found in cookies');
+    // Validasi input sebelum dikirim
+    if (!nama_menu || isNaN(harga) || harga <= 0 || !deskripsi || !gambar || !kategori) {
         Swal.fire({
-            icon: 'error',
-            title: 'CSRF token missing',
-            text: 'CSRF token not found in cookies.',
+            icon: 'warning',
+            title: 'Invalid Input',
+            text: 'Pastikan semua data sudah diisi dengan benar!',
             timer: 2000,
             showConfirmButton: false,
         });
         return;
     }
 
-    // Ekstrak token CSRF dari cookie
-    const csrfToken = csrfTokenCookie.split('=')[1];
+    // Ambil CSRF token dari cookie atau endpoint
+    let csrfToken = getCookie('csrftoken');
 
-    // Siapkan data untuk dikirim
-    const postData = {
-        nama_menu,
-        harga,
-        deskripsi,
-        gambar, 
-        kategori,
-    };
-
-    try {
-        const response = await fetch('https://asia-southeast2-menurestoran-443909.cloudfunctions.net/menurestoran/tambah/menu_ramen', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json', 
-                'X-CSRF-Token': csrfToken,  // Tambahkan CSRF token di header
-            },
-            body: JSON.stringify(postData), 
-        });
-
-        if (!response.ok) {
-            const errorMessage = await response.text();
-            console.error('Error:', errorMessage);
+    if (!csrfToken) {
+        try {
+            const tokenResponse = await fetch('https://asia-southeast2-menurestoran-443909.cloudfunctions.net/menurestoran/csrf-token');
+            if (!tokenResponse.ok) throw new Error('Gagal mengambil CSRF token');
+            const tokenData = await tokenResponse.json();
+            csrfToken = tokenData.csrf_token || null;
+        } catch (error) {
+            console.error('Failed to fetch CSRF token:', error);
             Swal.fire({
                 icon: 'error',
-                title: 'Error posting menu',
-                text: 'Error posting menu ramen.',
+                title: 'CSRF Token Missing',
+                text: 'Gagal mendapatkan CSRF token. Silakan coba lagi.',
                 timer: 2000,
                 showConfirmButton: false,
             });
             return;
         }
+    }
+
+    // Siapkan data untuk dikirim
+    const postData = { nama_menu, harga, deskripsi, gambar, kategori };
+
+    try {
+        const response = await fetch('https://asia-southeast2-menurestoran-443909.cloudfunctions.net/menurestoran/tambah/menu_ramen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
+            },
+            body: JSON.stringify(postData),
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.message || 'Terjadi kesalahan saat menambahkan menu.');
+        }
 
         Swal.fire({
             icon: 'success',
-            title: 'Menu posted successfully',
-            text: 'Successfully posted menu ramen.',
+            title: 'Success!',
+            text: 'Menu ramen berhasil ditambahkan!',
             timer: 2000,
             showConfirmButton: false,
         });
 
+        // Reset form setelah berhasil
         document.getElementById('addDataForm').reset();
+
     } catch (error) {
         console.error('Error submitting data:', error);
         Swal.fire({
             icon: 'error',
-            title: 'Error submitting menu',
-            text: 'Error submitting menu ramen.',
+            title: 'Request Failed',
+            text: error.message || 'Terjadi kesalahan dalam mengirim data.',
             timer: 2000,
             showConfirmButton: false,
         });
     }
 });
+
+// Fungsi untuk mengambil cookie CSRF dari browser
+function getCookie(name) {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + '=')) {
+            return cookie.substring(name.length + 1);
+        }
+    }
+    return null;
+}
+
+// Fungsi sanitasi input untuk mencegah XSS
+function sanitizeInput(input) {
+    return input.replace(/[<>"'&]/g, (match) => ({
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '&': '&amp;',
+    }[match]));
+}
+
 
 
 
